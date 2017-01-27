@@ -43,14 +43,19 @@ namespace Formulas
             isValidFormat();
         }
 
+        /// <summary>
+        /// examines the token passed to find out whether it is a valid variable or double.
+        /// </summary>
         public bool isValidValue(string t, ref double value, ref Lookup lookup)
         {
+            //checks if double
             if (Double.TryParse(t, out value))
             {
                 return true;
             }
             else
             {
+                //attempts to lookup the token to see if it matches any variables and returns the value if it does.
                 try
                 {
                     value = lookup(t);
@@ -64,6 +69,9 @@ namespace Formulas
             return false;
         }
 
+        /// <summary>
+        /// Cycles through the tokens and finds invalid formatting in the string passed to the constructor.
+        /// </summary>
         public void isValidFormat()
         {
             IEnumerator<String> eFormula = GetTokens(formula).GetEnumerator();
@@ -71,19 +79,25 @@ namespace Formulas
             double value = 0;
             int numTokens = 0;
 
+            //counts number of operators and values passed to make sure there aren't any in a row.
             int valuePassed = 0;
             int operatorPassed = 0;
 
+            //cicle through the formula
             while (eFormula.MoveNext())
             {
+                //counter for tokens. (used for making sure tokens > 0
                 numTokens++;
                 t = eFormula.Current;
+
+                //checks for two numbers in a row
                 if (Double.TryParse(t, out value))
                 {
                     valuePassed++;
                     operatorPassed = 0;
                 }else
                 {
+                    //checks for two operators in a row using a static operator list
                     int opPassedNew = operatorPassed;
                     foreach (var i in OPERATOR_ARRAY)
                     {
@@ -99,17 +113,20 @@ namespace Formulas
                     {
                         operatorPassed = 0;
                     }
-                    
+                    //resets num variables passed in a row
                     valuePassed = 0;
                 }
+                //throws an exception if more than 1 variable is passed in a row
                 if (valuePassed > 1)
                 {
                     throw new FormulaFormatException("2 or more variables were passed in a row.");
                 }
+                //throws an exception if more than 1 operator is passed in a row
                 if (operatorPassed > 1)
                 {
                     throw new FormulaFormatException("2 or more operators were passed in a row.");
                 }
+                //throws an exception if the number of tokens is 0
                 if (numTokens == 0)
                     throw new FormulaFormatException("No tokens were passed");
                 
@@ -133,6 +150,7 @@ namespace Formulas
             String t = "";  //temp token
             double value = 0;
 
+            //respective stacks
             Stack<double> valueStack = new Stack<double>();
             Stack<String> operatorStack = new Stack<String>();
 
@@ -145,10 +163,12 @@ namespace Formulas
                     {
                         switch (operatorStack.Peek())
                         {
+                            //case for multiply at top of operator stack when a valid variable or value is found
                             case "*":
                                 operatorStack.Pop();
                                 valueStack.Push(valueStack.Pop() * value);
                                 break;
+                            //case for divide at top of operator stack when a valid variable or value is found
                             case "/":
                                 try
                                 {
@@ -174,6 +194,7 @@ namespace Formulas
                     {
                         switch (t)
                         {
+                            //case for t when + is found
                             case "+":
                                 switch (operatorStack.Peek())
                                 {
@@ -188,6 +209,7 @@ namespace Formulas
                                 }
                                 operatorStack.Push(t);
                                 break;
+                            //case for t when it is found to be the "-" operator
                             case "-":
                                 switch (operatorStack.Peek())
                                 {
@@ -202,15 +224,19 @@ namespace Formulas
                                 }
                                 operatorStack.Push(t);
                                 break;
+                            //case for t when "*" is the current operator
                             case "*":
                                 operatorStack.Push(t);
                                 break;
+                            //case for t when "/" is the current operator
                             case "/":
                                 operatorStack.Push(t);
                                 break;
+                            //case for t when "(" is the current operator
                             case "(":
                                 operatorStack.Push(t);
                                 break;
+                            //case for t when ")" is the current operator
                             case ")":
                                 switch (operatorStack.Peek())
                                 {
@@ -239,6 +265,7 @@ namespace Formulas
                                     }
                                 }
                                 break;
+                            //if all operators fall through and no valid lookup variable is found then an exception is thrown for Formula Evaluation
                             default:
                                 throw new FormulaEvaluationException("Variable " + t + " is undefined.");
                                 
@@ -250,7 +277,8 @@ namespace Formulas
 
                 }
             }
-
+            
+            //case for when all tokens are cycled through
             if(operatorStack.Count != 0)
             {
                 switch (operatorStack.Pop())
@@ -263,39 +291,9 @@ namespace Formulas
                         break;
                 }
             }
+
+            //final evaluated value
             var output = valueStack.Pop();
-            return output;
-        }
-
-        private double Operate(double var1, string op, double var2)
-        {
-            //var1 is the popped value, var2 is the current t
-            double dVar1 = Convert.ToDouble(var1);
-            double dVar2 = Convert.ToDouble(var2);
-            double output = 0;
-
-            switch (op)
-            {
-                case "*":
-                    output = dVar1 * dVar2;
-                    break;
-                case "/":
-                    try
-                    {
-                        output = dVar1 / dVar2;
-                    }catch(DivideByZeroException e)
-                    {
-                        throw new System.DivideByZeroException("Your formula attempts to divide by 0");
-                    }
-                    break;
-                case "+":
-                    output = dVar1 + dVar2;
-                    break;
-                case "-":
-                    output = dVar1 - dVar2;
-                    break;
-                default: throw new System.InvalidOperationException("The operator you are attempting to use is invalid (programmer fucked up)");
-            }
             return output;
         }
 
