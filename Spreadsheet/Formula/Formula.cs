@@ -15,6 +15,8 @@ namespace Formulas
     /// </summary>
     public class Formula
     {
+        String[] OPERATOR_ARRAY = { "+", "-", "/", "*" };
+        String formula;
         /// <summary>
         /// Creates a Formula from a string that consists of a standard infix expression composed
         /// from non-negative floating-point numbers (using C#-like syntax for double/int literals), 
@@ -37,7 +39,83 @@ namespace Formulas
         /// </summary>
         public Formula(String formula)
         {
+            this.formula = formula;
+            isValidFormat();
         }
+
+        public bool isValidValue(string t, ref double value, ref Lookup lookup)
+        {
+            if (Double.TryParse(t, out value))
+            {
+                return true;
+            }
+            else
+            {
+                try
+                {
+                    value = lookup(t);
+                    return true;
+                }
+                catch (UndefinedVariableException e)
+                {
+
+                }
+            }
+            return false;
+        }
+
+        public void isValidFormat()
+        {
+            IEnumerator<String> eFormula = GetTokens(formula).GetEnumerator();
+            string t;
+            double value = 0;
+            int numTokens = 0;
+
+            int valuePassed = 0;
+            int operatorPassed = 0;
+
+            while (eFormula.MoveNext())
+            {
+                numTokens++;
+                t = eFormula.Current;
+                if (Double.TryParse(t, out value))
+                {
+                    valuePassed++;
+                    operatorPassed = 0;
+                }else
+                {
+                    int opPassedNew = operatorPassed;
+                    foreach (var i in OPERATOR_ARRAY)
+                    {
+                        if (t == i)
+                            opPassedNew++;
+                    }
+
+                    if (opPassedNew > operatorPassed)
+                    {
+                        operatorPassed = opPassedNew;
+                    }
+                    else
+                    {
+                        operatorPassed = 0;
+                    }
+                    
+                    valuePassed = 0;
+                }
+                if (valuePassed > 1)
+                {
+                    throw new FormulaFormatException("2 or more variables were passed in a row.");
+                }
+                if (operatorPassed > 1)
+                {
+                    throw new FormulaFormatException("2 or more operators were passed in a row.");
+                }
+                if (numTokens == 0)
+                    throw new FormulaFormatException("No tokens were passed");
+                
+            }
+        }
+
         /// <summary>
         /// Evaluates this Formula, using the Lookup delegate to determine the values of variables.  (The
         /// delegate takes a variable name as a parameter and returns its value (if it has one) or throws
@@ -49,7 +127,176 @@ namespace Formulas
         /// </summary>
         public double Evaluate(Lookup lookup)
         {
-            return 0;
+            IEnumerator<String> eFormula = GetTokens(formula).GetEnumerator();
+
+
+            String t = "";  //temp token
+            double value = 0;
+
+            Stack<double> valueStack = new Stack<double>();
+            Stack<String> operatorStack = new Stack<String>();
+
+            while(eFormula.MoveNext())
+            {
+                t = eFormula.Current;
+                if (isValidValue(t, ref value, ref lookup))
+                {
+                    if (operatorStack.Count != 0)
+                    {
+                        switch (operatorStack.Peek())
+                        {
+                            case "*":
+                                operatorStack.Pop();
+                                valueStack.Push(valueStack.Pop() * value);
+                                break;
+                            case "/":
+                                try
+                                {
+                                    operatorStack.Pop();
+                                    valueStack.Push(valueStack.Pop() / value);
+                                }
+                                catch (DivideByZeroException e)
+                                {
+                                    throw new System.DivideByZeroException("Your formula attempts to divide by 0");
+                                }
+                                break;
+                            default:
+                                valueStack.Push(value);
+                                break;
+                        }
+                    } else
+                    {
+                        valueStack.Push(value);
+                    }
+                } else
+                {
+                    if (operatorStack.Count != 0)
+                    {
+                        switch (t)
+                        {
+                            case "+":
+                                switch (operatorStack.Peek())
+                                {
+                                    case "-":
+                                        operatorStack.Pop();
+                                        valueStack.Push(-valueStack.Pop() + valueStack.Pop());
+                                        break;
+                                    case "+":
+                                        operatorStack.Pop();
+                                        valueStack.Push(valueStack.Pop() + valueStack.Pop());
+                                        break;
+                                }
+                                operatorStack.Push(t);
+                                break;
+                            case "-":
+                                switch (operatorStack.Peek())
+                                {
+                                    case "-":
+                                        operatorStack.Pop();
+                                        valueStack.Push(-valueStack.Pop() + valueStack.Pop());
+                                        break;
+                                    case "+":
+                                        operatorStack.Pop();
+                                        valueStack.Push(valueStack.Pop() + valueStack.Pop());
+                                        break;
+                                }
+                                operatorStack.Push(t);
+                                break;
+                            case "*":
+                                operatorStack.Push(t);
+                                break;
+                            case "/":
+                                operatorStack.Push(t);
+                                break;
+                            case "(":
+                                operatorStack.Push(t);
+                                break;
+                            case ")":
+                                switch (operatorStack.Peek())
+                                {
+                                    case "+":
+                                        operatorStack.Pop();
+                                        valueStack.Push(valueStack.Pop() + valueStack.Pop());
+                                        break;
+                                    case "-":
+                                        operatorStack.Pop();
+                                        valueStack.Push(-valueStack.Pop() + valueStack.Pop());
+                                        break;
+                                }
+                                operatorStack.Pop();
+                                if(operatorStack.Count != 0) { 
+                                    switch (operatorStack.Peek())
+                                    {
+                                        case "*":
+                                            operatorStack.Pop();
+                                            valueStack.Push(valueStack.Pop() * valueStack.Pop());
+                                            break;
+                                        case "/":
+                                            double temp = valueStack.Pop();
+                                            operatorStack.Pop();
+                                            valueStack.Push(valueStack.Pop() / temp);
+                                            break;
+                                    }
+                                }
+                                break;
+                            default:
+                                throw new FormulaEvaluationException("Variable " + t + " is undefined.");
+                                
+                        }
+                    }else
+                    {
+                        operatorStack.Push(t);
+                    }
+
+                }
+            }
+
+            if(operatorStack.Count != 0)
+            {
+                switch (operatorStack.Pop())
+                {
+                    case "-":
+                        valueStack.Push(-valueStack.Pop() + valueStack.Pop());
+                        break;
+                    case "+":
+                        valueStack.Push(valueStack.Pop() + valueStack.Pop());
+                        break;
+                }
+            }
+            var output = valueStack.Pop();
+            return output;
+        }
+
+        private double Operate(double var1, string op, double var2)
+        {
+            //var1 is the popped value, var2 is the current t
+            double dVar1 = Convert.ToDouble(var1);
+            double dVar2 = Convert.ToDouble(var2);
+            double output = 0;
+
+            switch (op)
+            {
+                case "*":
+                    output = dVar1 * dVar2;
+                    break;
+                case "/":
+                    try
+                    {
+                        output = dVar1 / dVar2;
+                    }catch(DivideByZeroException e)
+                    {
+                        throw new System.DivideByZeroException("Your formula attempts to divide by 0");
+                    }
+                    break;
+                case "+":
+                    output = dVar1 + dVar2;
+                    break;
+                case "-":
+                    output = dVar1 - dVar2;
+                    break;
+                default: throw new System.InvalidOperationException("The operator you are attempting to use is invalid (programmer fucked up)");
+            }
+            return output;
         }
 
         /// <summary>

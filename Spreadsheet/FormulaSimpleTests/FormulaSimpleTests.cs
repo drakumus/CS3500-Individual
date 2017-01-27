@@ -55,8 +55,9 @@ namespace FormulaTestCases
         [TestMethod]
         public void Evaluate1()
         {
-            Formula f = new Formula("2+3");
-            Assert.AreEqual(f.Evaluate(v => 0), 5.0, 1e-6);
+            Formula f = new Formula("(2+3)");
+ //           f.Evaluate(v => 0);
+            Assert.AreEqual(f.Evaluate(Lookup4), 5, 1e-6);
         }
 
         /// <summary>
@@ -104,6 +105,7 @@ namespace FormulaTestCases
         public void Evaluate5 ()
         {
             Formula f = new Formula("(x + y) * (z / x) * 1.0");
+            //Formula f = new Formula("y+x");
             Assert.AreEqual(f.Evaluate(Lookup4), 20.0, 1e-6);
         }
 
