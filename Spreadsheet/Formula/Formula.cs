@@ -61,7 +61,7 @@ namespace Formulas
 
             return variables;
         }
-        public Formula(String formula)
+        public Formula(String formula) //this(formula, n=> n, v => true)
         {
             //           formula.Replace(" ", string.Empty);
             OPERATOR_ARRAY = new String[] { "+", "-", "/", "*" };
