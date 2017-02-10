@@ -24,7 +24,7 @@ namespace Formulas
         /// parentheses, and the four binary operator symbols +, -, *, and /.  White space is
         /// permitted between tokens, but is not required.
         /// 
-        /// Examples of a valid parameter to this constructor are:
+        /// Examples of a valid parameter to this constructor  are:
         ///     "2.5e9 + x5 / 17"
         ///     "(5 * 2) + 8"
         ///     "x*y-2+35/9"
