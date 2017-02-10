@@ -65,7 +65,7 @@ namespace Dependencies
         /// Creates a DependencyGraph containing no dependencies.
         /// </summary>
         /// 
-        public DependencyGraph() : this(null)
+        public DependencyGraph()
         {
             //initialization for the above data structures.
             dependents = new Dictionary<string, HashSet<string>>();

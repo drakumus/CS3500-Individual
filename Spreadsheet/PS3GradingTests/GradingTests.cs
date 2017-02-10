@@ -836,107 +836,62 @@ namespace GradingTests
             {
                 StressTest8();
             }
-
-
-            // ********************************** A THIRD STESS TEST, REPEATED ******************** //
-            /// <summary>
-            ///Using lots of data with replacement
-            ///</summary>
             [TestMethod()]
-            public void StressTest15()
+            [ExpectedException(typeof(ArgumentNullException))]
+            public void Test1()
             {
-                // Dependency graph
                 DependencyGraph t = new DependencyGraph();
-
-                // A bunch of strings to use
-                const int SIZE = 800;
-                string[] letters = new string[SIZE];
-                for (int i = 0; i < SIZE; i++)
-                {
-                    letters[i] = ("" + (char)('a' + i));
-                }
-
-                // The correct answers
-                HashSet<string>[] dents = new HashSet<string>[SIZE];
-                HashSet<string>[] dees = new HashSet<string>[SIZE];
-                for (int i = 0; i < SIZE; i++)
-                {
-                    dents[i] = new HashSet<string>();
-                    dees[i] = new HashSet<string>();
-                }
-
-                // Add a bunch of dependencies
-                for (int i = 0; i < SIZE; i++)
-                {
-                    for (int j = i + 1; j < SIZE; j++)
-                    {
-                        t.AddDependency(letters[i], letters[j]);
-                        dents[i].Add(letters[j]);
-                        dees[j].Add(letters[i]);
-                    }
-                }
-
-                // Remove a bunch of dependencies
-                for (int i = 0; i < SIZE; i++)
-                {
-                    for (int j = i + 2; j < SIZE; j += 3)
-                    {
-                        t.RemoveDependency(letters[i], letters[j]);
-                        dents[i].Remove(letters[j]);
-                        dees[j].Remove(letters[i]);
-                    }
-                }
-
-                // Replace a bunch of dependees
-                for (int i = 0; i < SIZE; i += 2)
-                {
-                    HashSet<string> newDees = new HashSet<String>();
-                    for (int j = 0; j < SIZE; j += 9)
-                    {
-                        newDees.Add(letters[j]);
-                    }
-                    t.ReplaceDependees(letters[i], newDees);
-
-                    foreach (string s in dees[i])
-                    {
-                        dents[s[0] - 'a'].Remove(letters[i]);
-                    }
-
-                    foreach (string s in newDees)
-                    {
-                        dents[s[0] - 'a'].Add(letters[i]);
-                    }
-
-                    dees[i] = newDees;
-                }
-
-                // Make sure everything is right
-                for (int i = 0; i < SIZE; i++)
-                {
-                    Assert.IsTrue(dents[i].SetEquals(new HashSet<string>(t.GetDependents(letters[i]))));
-                    Assert.IsTrue(dees[i].SetEquals(new HashSet<string>(t.GetDependees(letters[i]))));
-                }
-            }
-
-            [TestMethod()]
-            public void StressTest16()
-            {
-                StressTest15();
+                t.AddDependency("x", null);
             }
             [TestMethod()]
-            public void StressTest17()
+            [ExpectedException(typeof(ArgumentNullException))]
+            public void Test2()
             {
-                StressTest15();
+                DependencyGraph t = new DependencyGraph();
+                t.HasDependees(null);
             }
             [TestMethod()]
-            public void StressTest18()
+            [ExpectedException(typeof(ArgumentNullException))]
+            public void Test3()
             {
-                StressTest15();
+                DependencyGraph t = new DependencyGraph();
+                t.HasDependents(null);
             }
             [TestMethod()]
-            public void StressTest19()
+            [ExpectedException(typeof(ArgumentNullException))]
+            public void Test4()
             {
-                StressTest15();
+                DependencyGraph t = new DependencyGraph();
+                t.RemoveDependency(null, null);
+            }
+            [TestMethod()]
+            [ExpectedException(typeof(ArgumentNullException))]
+            public void Test5()
+            {
+                DependencyGraph t = new DependencyGraph();
+                t.ReplaceDependees(null, null);
+            }
+            [TestMethod()]
+            [ExpectedException(typeof(ArgumentNullException))]
+            public void Test6()
+            {
+                DependencyGraph t = new DependencyGraph();
+                t.ReplaceDependees(null, null);
+            }
+            [TestMethod()]
+            [ExpectedException(typeof(ArgumentNullException))]
+            public void Test7()
+            {
+                DependencyGraph t = new DependencyGraph();
+                t.ReplaceDependents(null, null);
+            }
+            [TestMethod()]
+            public void Test8()
+            {
+                DependencyGraph t1 = new DependencyGraph();
+                t1.AddDependency("x", "y");
+                DependencyGraph t2 = new DependencyGraph(t1);
+                Assert.IsTrue(t2.HasDependees("y"));
             }
         }
     }
