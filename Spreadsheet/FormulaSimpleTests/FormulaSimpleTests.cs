@@ -107,6 +107,38 @@ namespace FormulaTestCases
             Assert.AreEqual(f.Evaluate(Lookup4), 20.0, 1e-6);
         }
 
+        [TestMethod]
+        public void Evaluate6()
+        {
+            Formula f = new Formula();
+            Assert.AreEqual(f.Evaluate(v => 0), 0);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void Evaluate7()
+        {
+            Formula f = new Formula();
+            f.Evaluate(null);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(FormulaFormatException))]
+
+        //test case for normalize breaking variable standard
+        public void Evaluate8()
+        {
+            Formula f = new Formula("x + y", BadNormalize, Validate);
+            
+        }
+
+        //test case for validate 
+        [TestMethod]
+        public void Evaluate9()
+        {
+            Formula f = new Formula("z/10", AverageNormalize, Validate);
+            Assert.AreEqual(f.Evaluate(Lookup4),.4);
+        }
         /// <summary>
         /// A Lookup method that maps x to 4.0, y to 6.0, and z to 8.0.
         /// All other variables result in an UndefinedVariableException.
@@ -123,5 +155,29 @@ namespace FormulaTestCases
                 default: throw new UndefinedVariableException(v);
             }
         }
+
+        //couldnt think of test cases for null in tokens since we have a case for null string being passed
+        public string GoodNormalize(String v)
+        {
+            return v.ToUpper();
+        }
+
+        public string BadNormalize(string v)
+        {
+            return "_5";
+        }
+
+        public string AverageNormalize(string v)
+        {
+            return "x";
+        }
+
+        public bool Validate(string v)
+        {
+            if (v.Length < 2)
+                return true;
+            return false;
+        }
+        
     }
 }

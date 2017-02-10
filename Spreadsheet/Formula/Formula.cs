@@ -51,27 +51,49 @@ namespace Formulas
         }
         */
 
+        ///Get Variables acts as a tool that cycles through tokens
+        ///within the formula string. If these tokens are validated as variables
+        ///then they are added to a set
+        ///the returned item is an ISet of variables
         public ISet<String> GetVariables()
         {
+            //sets up an IEnumerable data set of tokens using the getTokens method
             IEnumerable<String> tokens = GetTokens(formula);
+            //creates a hashset to store tokens to
             ISet<String> variables = new HashSet<String>();
+            //cycles through all tokens in the formula string and checks if they follow the normal definition
+            //if they do they're stored in the variables Set
             foreach (string s in tokens)
                 if (isValidVar(s))
                     variables.Add(s);
 
             return variables;
         }
-        public Formula(String formula) //this(formula, n=> n, v => true)
+
+        ///<summary>
+        ///base constructor for formula. It also store base values for various variables
+        ///and checks for valid format of the formula
+        ///</summary>
+        public Formula(String formula) :this("0", n=> n, v => true)
         {
-            //           formula.Replace(" ", string.Empty);
+            
             OPERATOR_ARRAY = new String[] { "+", "-", "/", "*" };
             this.formula = formula;
             isValidFormat();
 
         }
-
-        public Formula(String formula, Normalizer normalizer, Validator validator) :this(formula)
+        
+        /// <summary>
+        /// Takes inputs for normalizer and validator for a refined formula
+        /// see instantiation of the delegates normalizer and validator for details.
+        /// This constructor also acts to check if Normalizer and Validator meet their 
+        /// conditions or break the code.
+        /// </summary>
+        public Formula(String formula, Normalizer normalizer, Validator validator)
         {
+            OPERATOR_ARRAY = new String[] { "+", "-", "/", "*" };
+            this.formula = formula;
+            isValidFormat();
             if (normalizer == null || validator == null)
                 throw new ArgumentNullException("You are missing a parameter");
 
@@ -92,7 +114,7 @@ namespace Formulas
         /// <summary>
         /// examines the token passed to find out whether it is a valid variable or double.
         /// </summary>
-        public bool isValidValue(string t, ref double value, ref Lookup lookup)
+        private bool isValidValue(string t, ref double value, ref Lookup lookup)
         {
 
             //checks if double
@@ -116,6 +138,11 @@ namespace Formulas
             return false;
         }
 
+        /// <summary>
+        /// checks if a passed string is contained in the OPERATOR_ARRAY
+        /// which holds all valid operators.
+        /// Returns true if it does and false if it does not.
+        /// </summary>
         private bool isValidOperator(string s)
         {
             foreach (string o in OPERATOR_ARRAY)
@@ -125,14 +152,18 @@ namespace Formulas
         }
 
         /// <summary>
-        /// checks if variable passed is formatted correctly via Regex.
+        /// checks if variable passed is formatted correctly via Regex and follows the normal
+        /// defenition of a variable.
         /// </summary>
         private bool isValidVar(string s)
         {
             return Regex.IsMatch(s, @"[a-zA-Z][0-9a-zA-Z]*");
         }
 
-        public void isValidFormat()
+        /// <summary>
+        /// This array checks for all cases of error for formatting that can occur when passing an array.
+        /// </summary>
+        private void isValidFormat()
         {
             IEnumerator<String> eFormula = GetTokens(formula).GetEnumerator();
             String token = "";
@@ -146,7 +177,7 @@ namespace Formulas
             {
                 token = eFormula.Current;
                 tokenCounter++;
-                // check first token
+                // check first token to make sure it is not an opperator
                 if (tokenCounter == 1)
                 {
                     if (!Double.TryParse(token, out result) && !token.Equals("(") && !isValidVar(token))
@@ -154,49 +185,65 @@ namespace Formulas
                 }
                 if (token.Equals("("))
                 {
+                    //starts tracking parenthesis and checks to make sure that a closed parenthesis, number, or variable isn't immediately preceding it
                     if (closeParenOrNumberOrVariable == true)
                         throw new FormulaFormatException("Invalid token '(' following close paren or number or variable");
                     openParenthesisStack.Push(token);
                     openParenOrOperator = true;
                 }
+                // throws an error if there is no open parenthesis to match
                 else if (token.Equals(")"))
                 {
                     if (openParenthesisStack.Count == 0)
                         throw new FormulaFormatException("No matching opening paranthesis");
+                    //pops an open Parenthesis off its stack since a set is complete with close
                     openParenthesisStack.Pop();
+                    //sets case for close paren true to make sure an open parenthesis doesn't appear right after
                     closeParenOrNumberOrVariable = true;
+                    //checks if an open operator is immediately preceeding a closed operator
                     if (openParenOrOperator == true)
                         throw new FormulaFormatException("Invalid ')' following open paren or operator");
                 }
+                //double casses
                 else if (Double.TryParse(token, out result))
                 {
+                    //case for if this value is immediately next to a matching type or paren or variable
                     if (closeParenOrNumberOrVariable == true)
                         throw new FormulaFormatException("Invalid token (number) following close paren or number or variable");
                     closeParenOrNumberOrVariable = true;
                     openParenOrOperator = false;
                 }
+                //checks if the variable is valid by normal definition and supplies cases for it
                 else if (isValidVar(token))
                 {
+                    //case for fail type if paren, number or variable is next to it
                     if (closeParenOrNumberOrVariable == true)
                         throw new FormulaFormatException("Invalid token (variable) following close paren or number or variable");
+                    //sets up for close paren case
                     closeParenOrNumberOrVariable = true;
+                    //sets up for open paren case
                     openParenOrOperator = false;
                 }
+                //cases for all values in VALID_OPERATOR array
                 else if (isValidOperator(token))
                 {
+                    //makes sure an open paren is not immediately before these strings
                     if (openParenOrOperator == true)
                         throw new FormulaFormatException("Invalid token (operator) following open paren or operator");
                     openParenOrOperator = true;
                     closeParenOrNumberOrVariable = false;
                 }
+                //if all other cases fall through throw an error for invalid token
                 else
                 {
                     throw new FormulaFormatException("Invalid token in formula");
                 }
             }
 
+            //makes sure the formula isn't empty
             if (tokenCounter == 0)
                 throw new FormulaFormatException("No tokens");
+            //case for unresolved open paren
             if (openParenthesisStack.Count > 0)
                 throw new FormulaFormatException("Matching closing paranthesis missing");
             // last token has to be a number, variable or closing paranthesis
@@ -205,60 +252,86 @@ namespace Formulas
                 throw new FormulaFormatException("Last token must end with a number, ')' or variable");
             }
         }
-       
+
+       /// <summary>
+       /// checks to make sure that normalize does not invalidate the variables it is changing
+       /// </summary>
         private void NormalizedValidate(Normalizer normalize)
         {
+            //checks for empty parameter
             if (normalize == null)
                 throw new ArgumentNullException("Parameter Expected");
+            //gets all variables
             ISet<String> vars = GetVariables();
+            //base case
             bool isValid = true;
-            if(vars.Count > 0)
+            //cycles through each variable in variables and passes normalize then passes the normalized token into isValidVar
+            //this checks to make sure it follows standard form.
+            if (vars.Count > 0)
                 foreach (string s in vars)
                     if (!isValidVar(normalize(s)))
                         isValid = false;
+            //throws an exception if the var is not valid
             if (!isValid)
                 throw new FormulaFormatException("The normalized variables are not valid");
         }
 
+        /// <summary>
+        /// checks to make sure the validate deligate passes as true for all normalized variables
+        /// </summary>
         private bool ValidaterValidate(Normalizer normalize, Validator validate)
         {
+            //checks for null parameters
             if (normalize == null || validate == null)
                 throw new ArgumentNullException("Parameter Expected");
+            //makes a set for all variables
             ISet<String> vars = GetVariables();
+            //base case
             bool isValid = true;
+            //checks to make sure vars exist
             if (vars.Count > 0)
+                //cycles through vars and checks to make sure the normalized variables pass the validate deligate
                 foreach (string s in vars)
                     if (!validate(normalize(s)))
                         isValid = false;
+            //throws an exception if the normalized variables dont validate.
             if (!isValid)
                 throw new FormulaFormatException("The normalized variable did not pass the validator's requirements");
+            //returns the result
             return isValid;
         }
-
+        /// <summary>
+        /// replaces all variables with their normalized counterparts
+        /// </summary>
         private void UpdateVariables(Normalizer normalize)
         {
+            //checks for null parameters
             if (normalize == null)
                 throw new ArgumentNullException("Parameter Expected");
-            ISet<String> set = new HashSet<String>();
-            foreach (string s in GetVariables())
+            //replaces variables with normalized variables 
+            ISet<string> set = GetVariables();
+            string v;
+            foreach (string s in set)
             {
-                formula.Replace(s,normalize(s));
-                set.Add(normalize(s));
+                v = normalize(s);
+                formula = formula.Replace(s,normalize(s));
             }
         }
 
         /// <summary>
         /// Passes value token 1 (vt1), value token 2 (vt2), and operation token (opt)
-        /// to calculate 
+        /// to calculate result
         /// </summary>
 
         private static double Calculate(double vt1, string opt, double vt2)
         {
+            //checks for null inputs. doubles cannot be null by nature
             if (opt == null)
                 throw new ArgumentNullException("Parameter Expected");
 
             double solution = 0;
 
+            //cases for various operators
             switch (opt)
             {
                 case "*":
@@ -276,10 +349,15 @@ namespace Formulas
                     solution = vt1 + vt2;
                     break;
             }
-
+            //returns result
             return solution;
         }
 
+        /// <summary>
+        /// peeks at the top of the operator stack
+        /// </summary>
+        /// <param name="s"></param>
+        /// <returns>returns top of operator stack or "" if stack is empty</returns>
         private String peekOperatorStack(Stack<String> s)
         {
             if (s.Count > 0)
@@ -311,17 +389,22 @@ namespace Formulas
 
             IEnumerator<String> eFormula = GetTokens(formula).GetEnumerator();
 
+            //case for null formula
+            
             if (formula == null)
             {
                 formula = "0";
             }
 
+            //cycles through tokens
             while (eFormula.MoveNext())
             {
                 token = eFormula.Current;
+                //case for token being a double
                 if (Double.TryParse(token, out tval))
                 {
                     op = peekOperatorStack(operatorStack);
+                    //case for * and /
                     if (op.Equals("*") || op.Equals("/"))
                     {
                         sval = valueStack.Pop();
@@ -329,21 +412,26 @@ namespace Formulas
                         result = Calculate(sval, op, tval);
                         valueStack.Push(result);
                     }
+                    //pushes to operator stack if value stack empty
                     else
                     {
                         valueStack.Push(tval);
                     }
                 }
+                //case for valid variable
                 else if (isValidVar(token))
                 {
+                    //case for looking up the variable
                     try
                     {
                         tval = lookup(token);
                     }
                     catch (UndefinedVariableException ex)
                     {
+                        //throws exception if no variable could be found
                         throw new FormulaEvaluationException("Variable not defined");
                     }
+                    //peeks operator stack and builds cases for it incase var is valid
                     op = peekOperatorStack(operatorStack);
                     if (op.Equals("*") || op.Equals("/"))
                     {
@@ -357,6 +445,7 @@ namespace Formulas
                         valueStack.Push(tval);
                     }
                 }
+                //case for + - operators
                 else if (token.Equals("+") || token.Equals("-"))
                 {
                     op = peekOperatorStack(operatorStack);
@@ -370,6 +459,7 @@ namespace Formulas
                     }
                     operatorStack.Push(token);
                 }
+                //case for * / tokens. Simply pushes to operator stack. same for (
                 else if (token.Equals("*") || token.Equals("/"))
                 {
                     operatorStack.Push(token);
@@ -378,6 +468,7 @@ namespace Formulas
                 {
                     operatorStack.Push(token);
                 }
+                //case for closing parentheses. Attempts to resolve paren set
                 else if (token.Equals(")"))
                 {
                     op = peekOperatorStack(operatorStack);
@@ -403,9 +494,11 @@ namespace Formulas
                     }
                 }
             }
+            //case for empty operator stack
             if (operatorStack.Count == 0)
                 return valueStack.Pop();
-
+            //if operator stack isn't empty there must be 2 val and 1 operator which is resolved
+            //and returned with calculate
             tval = valueStack.Pop();
             sval = valueStack.Pop();
             op = operatorStack.Pop();
@@ -473,7 +566,11 @@ namespace Formulas
     /// don't is up to the implementation of the method.
     /// </summary>
     public delegate double Lookup(string var);
-
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="s"></param>
+    /// <returns></returns>
     public delegate string Normalizer(string s);
     public delegate bool Validator(string s);
 
@@ -522,4 +619,6 @@ namespace Formulas
         {
         }
     }
+
+
 }
