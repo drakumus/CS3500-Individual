@@ -65,12 +65,18 @@ namespace Dependencies
         /// Creates a DependencyGraph containing no dependencies.
         /// </summary>
         /// 
-        public DependencyGraph()
+        public DependencyGraph() : this(null)
         {
             //initialization for the above data structures.
             dependents = new Dictionary<string, HashSet<string>>();
             dependees = new Dictionary<string, HashSet<string>>();
             size = 0;
+        }
+
+        public DependencyGraph(DependencyGraph graph) 
+        {
+            this.dependees = graph.dependees;
+            this.dependents = graph.dependents;
         }
 
         /// <summary>
@@ -91,7 +97,8 @@ namespace Dependencies
         /// </summary>
         public bool HasDependents(string s)
         {
-            if(s == null)
+            //checks if paramter is null.
+            if (s == null)
             {
                 throw new ArgumentNullException("The parameter passed is null.");
             }
@@ -104,6 +111,7 @@ namespace Dependencies
         /// </summary>
         public bool HasDependees(string s)
         {
+            //checks if paramter is null.
             if (s == null)
             {
                 throw new ArgumentNullException("The parameter passed is null.");
@@ -117,6 +125,7 @@ namespace Dependencies
         /// </summary>
         public IEnumerable<string> GetDependents(string s)
         {
+            //checks if paramter is null.
             if (s == null)
             {
                 throw new ArgumentNullException("The parameter passed is null.");
@@ -154,6 +163,9 @@ namespace Dependencies
         /// </summary>
         public void AddDependency(string s, string t)
         {
+            //checks if paramter is null.
+            if (s == null || t == null)
+                throw new ArgumentNullException("The parameter passed is null");
             //case to check if the library already has the key for dependents.
             if (dependees.ContainsKey(s))
             {
@@ -195,6 +207,9 @@ namespace Dependencies
         /// </summary>
         private void cleanDictionary(string node1, string node2)
         {
+            //checks if paramter is null.
+            if (node1 == null || node2 == null)
+                throw new ArgumentNullException("The parameter passed is null");
             if (dependees[node1].Count == 0)
                 dependees.Remove(node1);
             if (dependents[node2].Count == 0)
@@ -208,6 +223,9 @@ namespace Dependencies
         /// </summary>
         public void RemoveDependency(string s, string t)
         {
+            //checks if paramter is null.
+            if (s == null || t == null)
+                throw new ArgumentNullException("The parameter passed is null");
             //checks if a provided dependent actually exists. (s != null)
             if (dependees.ContainsKey(s))
             {
@@ -233,6 +251,9 @@ namespace Dependencies
         /// </summary>
         public void ReplaceDependents(string s, IEnumerable<string> newDependents)
         {
+            //checks if paramter is null.
+            if (s == null)
+                throw new ArgumentNullException("The parameter passed is null");
             if (HasDependents(s))
             {
                 //instance variable created so the itterated object doesn't experience edits
@@ -241,11 +262,15 @@ namespace Dependencies
                 //removes dependents and dependees.
                 foreach (string t in depend)
                 {
+                    if (t == null)
+                        throw new ArgumentNullException("One of the strings in the dependencies is null");
                     RemoveDependency(s, t);
                 }
                 //adds new dependents and updates dependees.
                 foreach (string t in newDependents)
                 {
+                    if (t == null)
+                        throw new ArgumentNullException("One of the strings in the new dependencies is null");
                     AddDependency(s, t);
                 }
             }
@@ -265,11 +290,17 @@ namespace Dependencies
                 //removes dependees and dependents.
                 foreach (string r in depend)
                 {
+                    //checks if one of the dependencies is null.
+                    if (t == null)
+                        throw new ArgumentNullException("One of the strings in the dependencies is null");
                     RemoveDependency(r, t);
                 }
                 //adds new dependees and updates dependents.
                 foreach (string s in newDependees)
                 {
+                    //checks if one of the dependencies is null.
+                    if (t == null)
+                        throw new ArgumentNullException("One of the strings in the new dependencies is null");
                     AddDependency(s, t);
                 }
             }
