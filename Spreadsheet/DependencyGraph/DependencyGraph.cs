@@ -1,4 +1,5 @@
 ﻿// Skeleton implementation written by Joe Zachary for CS 3500, January 2017.
+// Interpretation coded by Rohan Cheeniyil u0914584
 
 using System;
 using System.Collections.Generic;
@@ -7,7 +8,7 @@ namespace Dependencies
 {
     /// <summary>
     /// A DependencyGraph can be modeled as a set of dependencies, where a dependency is an ordered 
-    /// pair of strings.  Two dependencies (s1,t1) and (s2,t2) are considered equal if and only if 
+    /// pair of strings.  Two dependencies (s1,t1) and (s2,t2) are considered equal if  and only if 
     /// s1 equals s2 and t1 equals t2.
     /// 
     /// Given a DependencyGraph DG:
@@ -48,11 +49,28 @@ namespace Dependencies
     /// </summary>
     public class DependencyGraph
     {
+        //hashmap/dictionary based around defining dependees attached to each dependent. This data structure was chosen
+        //because I found it to be the best representation of Directed Acyclic Graphs with
+        //a logical structure for the tasks required by Dependency Graph.
+        //HashSet is used over list due to its ability to prevent duplicates and having a return on Adds and Removes
+        private Dictionary<string, HashSet<string>> dependents;
+        //dependees is a Dictionary built at the same time as dependents to remove the requirements for expensive
+        //algorithms that would otherwise have to quadratically step through a two dementional data structure.
+        //The result is a big O (2n) efficiency instead of n^2. Dependees maps dependents to a dependee.
+        private Dictionary<string, HashSet<string>> dependees;
+
+        private int size;
+
         /// <summary>
         /// Creates a DependencyGraph containing no dependencies.
         /// </summary>
+        /// 
         public DependencyGraph()
         {
+            //initialization for the above data structures.
+            dependents = new Dictionary<string, HashSet<string>>();
+            dependees = new Dictionary<string, HashSet<string>>();
+            size = 0;
         }
 
         /// <summary>
@@ -60,7 +78,12 @@ namespace Dependencies
         /// </summary>
         public int Size
         {
-            get { return 0; }
+            get
+            {
+                //value of size is adjusted in the methods Add and Remove which are the only two methods 
+                //that directly deal with size adjustment.
+                return size;
+            }
         }
 
         /// <summary>
@@ -68,7 +91,12 @@ namespace Dependencies
         /// </summary>
         public bool HasDependents(string s)
         {
-            return false;
+            if(s == null)
+            {
+                throw new ArgumentNullException("The parameter passed is null.");
+            }
+            //has dependents checks that the dictionary for dependees has dependences mapped to the string s.
+            return dependees.ContainsKey(s);
         }
 
         /// <summary>
@@ -76,7 +104,12 @@ namespace Dependencies
         /// </summary>
         public bool HasDependees(string s)
         {
-            return false;
+            if (s == null)
+            {
+                throw new ArgumentNullException("The parameter passed is null.");
+            }
+            //similar to HasDependents, Has Dependees checks the dictionary for dependents to see if there are any dependees mapped to it.
+            return dependents.ContainsKey(s);
         }
 
         /// <summary>
@@ -84,7 +117,16 @@ namespace Dependencies
         /// </summary>
         public IEnumerable<string> GetDependents(string s)
         {
-            return null;
+            if (s == null)
+            {
+                throw new ArgumentNullException("The parameter passed is null.");
+            }
+            //checks if the provided string actually has dependents. If it doesn't an empty HashSet is returned
+            //(as shown in the guidelines commented above). Otherwise an itterable object is returned contaning the respective dependents
+            //mapped to a dependee.
+            if (HasDependents(s))
+                return new HashSet<string>(dependees[s]);
+            return new HashSet<string>();
         }
 
         /// <summary>
@@ -92,7 +134,17 @@ namespace Dependencies
         /// </summary>
         public IEnumerable<string> GetDependees(string s)
         {
-            return null;
+            //checks if paramter is null.
+            if (s == null)
+            {
+                throw new ArgumentNullException("The parameter passed is null.");
+            }
+            //again checks to see if a given string has dependees. If it does then the dependees mapped to the dependent are returend
+            //in an iterable object. If not then a black hashset is returned per example output above.
+            if (HasDependees(s))
+                return new HashSet<string>(dependents[s]);
+            return new HashSet<string>();
+
         }
 
         /// <summary>
@@ -102,6 +154,51 @@ namespace Dependencies
         /// </summary>
         public void AddDependency(string s, string t)
         {
+            //case to check if the library already has the key for dependents.
+            if (dependees.ContainsKey(s))
+            {
+                //if so it attempts to add the key.
+                //the beauty of HashSets is that not only do they prevent duplications but they also return true or false
+                //if an add or remove is successful. Due to thie capability I'm able to incrememnt size using just the conditional
+                //add here.
+                if (dependees[s].Add(t))
+                {
+                    size++;
+                }
+            }
+            else
+            {
+                //if the container does not have the key then the dependent is added
+                size += 1;
+                dependees.Add(s, new HashSet<string>() { t });
+
+            }
+
+            //checks if a dependee exists in the dependent's map
+            if (dependents.ContainsKey(t))
+                //this statement is not turned into a conditional due to the size already being managed.
+                dependents[t].Add(s);
+            else
+            {
+                //adds a new dependee to the dependents map.
+                dependents.Add(t, new HashSet<string>() { s });
+
+            }
+
+        }
+
+        /// <summary>
+        /// This simple function is used to remove dependent node 1
+        /// and dependee node 2 from a dictionary and is only called
+        /// after remove. It was made into a seperate method for ease
+        /// of use in the future and documentation purposes.
+        /// </summary>
+        private void cleanDictionary(string node1, string node2)
+        {
+            if (dependees[node1].Count == 0)
+                dependees.Remove(node1);
+            if (dependents[node2].Count == 0)
+                dependents.Remove(node2);
         }
 
         /// <summary>
@@ -111,6 +208,22 @@ namespace Dependencies
         /// </summary>
         public void RemoveDependency(string s, string t)
         {
+            //checks if a provided dependent actually exists. (s != null)
+            if (dependees.ContainsKey(s))
+            {
+                //conditional for if the provided dependee exists. (t != null)
+                if (dependees[s].Remove(t))
+                {
+                    //handles size if the item is successfully removed.
+                    size--;
+                    //if a dependent lookup is successful it can be assumed a dependee
+                    //lookup will also be successful removing the need to code it in.
+                    //Thus the dependee entree s is removed from t.
+                    dependents[t].Remove(s);
+                    //checks if s maps any dependents and if t maps any dependees.
+                    cleanDictionary(s, t);
+                }
+            }
         }
 
         /// <summary>
@@ -120,6 +233,22 @@ namespace Dependencies
         /// </summary>
         public void ReplaceDependents(string s, IEnumerable<string> newDependents)
         {
+            if (HasDependents(s))
+            {
+                //instance variable created so the itterated object doesn't experience edits
+                //while itering.
+                IEnumerable<string> depend = GetDependents(s);
+                //removes dependents and dependees.
+                foreach (string t in depend)
+                {
+                    RemoveDependency(s, t);
+                }
+                //adds new dependents and updates dependees.
+                foreach (string t in newDependents)
+                {
+                    AddDependency(s, t);
+                }
+            }
         }
 
         /// <summary>
@@ -129,6 +258,21 @@ namespace Dependencies
         /// </summary>
         public void ReplaceDependees(string t, IEnumerable<string> newDependees)
         {
+            if (HasDependees(t))
+            {
+                //again instance variable provided to prevent iteration errors.
+                IEnumerable<string> depend = GetDependees(t);
+                //removes dependees and dependents.
+                foreach (string r in depend)
+                {
+                    RemoveDependency(r, t);
+                }
+                //adds new dependees and updates dependents.
+                foreach (string s in newDependees)
+                {
+                    AddDependency(s, t);
+                }
+            }
         }
     }
 }
