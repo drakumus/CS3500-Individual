@@ -28,7 +28,7 @@ namespace Formulas
         ///     "2.5e9 + x5 / 17"
         ///     "(5 * 2) + 8"
         ///     "x*y-2+35/9"
-        ///     
+        ///     v
         /// Examples of invalid parameters are:
         ///     "_"
         ///     "-5.3"
