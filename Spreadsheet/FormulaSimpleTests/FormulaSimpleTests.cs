@@ -139,7 +139,7 @@ namespace FormulaTestCases
             Formula f = new Formula("z/10", AverageNormalize, Validate);
             Assert.AreEqual(f.Evaluate(Lookup4),.4);
         }
-        /// <summary>
+        /// <summary> 
         /// A Lookup method that maps x to 4.0, y to 6.0, and z to 8.0.
         /// All other variables result in an UndefinedVariableException.
         /// </summary>
