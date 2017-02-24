@@ -75,8 +75,16 @@ namespace Dependencies
 
         public DependencyGraph(DependencyGraph graph) 
         {
-            this.dependees = graph.dependees;
-            this.dependents = graph.dependents;
+            dependees = new Dictionary<string, HashSet<string>>();
+            dependents = new Dictionary<string, HashSet<string>>();
+            foreach(string s in graph.dependees.Keys)
+            {
+                foreach(string t in graph.dependees[s])
+                {
+                    AddDependency(s, t);
+                }
+            }
+
         }
 
         /// <summary>
