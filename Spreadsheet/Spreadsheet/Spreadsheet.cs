@@ -46,10 +46,14 @@ namespace SS
         /// <returns></returns>
         public override object GetCellContents(string name)
         {
+
+            //small fix returning cell contents instead of cell name
             if (name == null)
                 throw new InvalidNameException();
-            if (IsValidName(name) && cells.ContainsKey(name))
+            if (IsValidName(name))
             {
+                if(!cells.ContainsKey(name))
+                    return "";
                 return cells[name].contents;
             }
             else
@@ -86,6 +90,23 @@ namespace SS
             if (formula.Equals(null))
                 throw new ArgumentNullException();
             //RegexCheck and then assigns cell
+
+            IEnumerable<string> oldDependents = map.GetDependents(name);
+            map.ReplaceDependents(name, new HashSet<string>());
+
+            foreach(string var in formula.GetVariables())
+            {
+                try
+                {
+                    map.AddDependency(name, var);
+                }
+                catch (InvalidOperationException)
+                {
+                    map.ReplaceDependents(name, oldDependents);
+                    throw new CircularException();
+                }
+            }
+
             if (IsValidName(name))
             {
                 if (cells.ContainsKey(name))
@@ -98,6 +119,7 @@ namespace SS
                 throw new InvalidNameException();
 
             //CircularException Check
+
             foreach (string var in formula.GetVariables())
             {
                 map.AddDependency(name, var);
@@ -123,8 +145,14 @@ namespace SS
             if (IsValidName(name))
             {
                 if (cells.ContainsKey(name))
+                {
                     cells[name] = new Cell(text);
-                else
+                    if(text == "")
+                    {
+                        cells.Remove(name);
+                    }
+                }
+                else if (text.Length > 0)
                     cells.Add(name, new Cell(text));
             }
             else
@@ -158,7 +186,7 @@ namespace SS
             map.ReplaceDependees(name, new HashSet<String>());
 
             //same functionality as other SetCellConetnts
-            return (ISet<string>)map.GetDependents(name);
+            return new HashSet<string>(GetCellsToRecalculate(name));
         }
 
         /// <summary>
