@@ -31,12 +31,12 @@ namespace SS
         {
             get
             {
-                return Changed;
+                return changed;
             }
 
             protected set
             {
-                Changed = changed;
+                changed = value;
             }
         }
 
@@ -46,6 +46,7 @@ namespace SS
         public Spreadsheet()
         {
             //@"^[a - zA - Z_](?: [a - zA - Z_] |\d)*$"
+            //base Spreadsheet
             isValid = new Regex(@".*");
 
             cells = new Dictionary<string, Cell>();
@@ -55,6 +56,7 @@ namespace SS
 
         public Spreadsheet(Regex isValid) : this()
         {
+            //regex check
             try
             {
                 this.isValid = isValid;
@@ -64,12 +66,55 @@ namespace SS
                 throw new SpreadsheetReadException("Invalid Regex");
             }
         }
-
+        /// <summary>
+        /// Used to read from an xml and set up a spreadsheet acordingly.
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="newIsValid"></param>
         public Spreadsheet(TextReader source, Regex newIsValid) : this(newIsValid)
         {
+            XmlReader reader = XmlReader.Create(source);
+            List<string> junk = new List<string>();
+            using (reader)
+            {
+                while (reader.Read())
+                {
+                    if (reader.IsStartElement())
+                    {
+                        //case to set up regex
+                        if(reader.Name == "IsValid")
+                        {
+                            try
+                            {
+                                newIsValid = new Regex(reader["IsValid"]);
+                            }
+                            catch
+                            {
+                                throw new SpreadsheetReadException("Error in Regex");
+                            }
+                        }
+                    } else if (reader.Name == "cell")
+                    {
+                        //adds cells
+                        int numOccurances = 0;
+                        List<string> temp = new List<string>();
 
+                        //duplicates check
+                        foreach (string s in junk)
+                        {
+                            if (temp.Contains(s))
+                                throw new SpreadsheetReadException("duplicate read occured");
+                            temp.Add(s);
+                        }
+
+                        junk.Add(reader["name"]);
+                        SetContentsOfCell(reader["name"], reader["contents"]);
+
+                    }
+                }
+            }
         }
-
+        
         /// <summary>
         /// Private Method utilizing Regex to check for names that break convention
         /// </summary>
@@ -78,9 +123,7 @@ namespace SS
         private bool IsValidName(string name)
         {
             //if (Regex.IsMatch(name, @"^[a-zA-Z_](?: [a-zA-Z_]|\d)*$", RegexOptions.Singleline) && name != null)
-            if (isValid.IsMatch(name.ToUpper()))
-                return true;
-            return false;
+            return Regex.IsMatch(name, @"^[a-zA-Z_](?: [a-zA-Z_]|\d)*$", RegexOptions.Singleline) && isValid.IsMatch(name);
         }
 
 
@@ -96,6 +139,7 @@ namespace SS
             //small fix returning cell contents instead of cell name
             if (name == null)
                 throw new InvalidNameException();
+            //case for setting cell contents of a cell not yet assigned
             if (IsValidName(name))
             {
                 if(!cells.ContainsKey(name))
@@ -150,44 +194,38 @@ namespace SS
                 map.AddDependency(name, var);
             }
 
+            //update dependents
             directDependents = new HashSet<string>(GetCellsToRecalculate(name));
 
+            //adds cell to cells
             if (IsValidName(name))
             {
                 cells[name] = new Cell(formula);
+
             }
             else
                 throw new InvalidNameException();
+
+            //checks for update in formula value with new variable added
+            foreach (string s in GetCellsToRecalculate(name))
+            {
+                Cell outCell;
+                if(cells.TryGetValue(s, out outCell))
+                {
+                    outCell.EvaluateFormula(t => (double)cells[t].value);
+                }
+            }
 
             //returns all the cells effected by the change in a Hashset
             return new HashSet<string>(GetCellsToRecalculate(name));
         }
 
-        private double LookUp(string name)
-        {
-
-
-            Dictionary<string, double> dic = new Dictionary<string, double>();
-            IEnumerable<string> dependents = GetDirectDependents(name);
-            foreach(string var in dependents)
-            {
-                if (var != name && cells[var].value is double)
-                    dic.Add(var, (double)cells[var].value);
-
-            }    
-
-                
-            throw new NotImplementedException();
-        }
-
-
-
         /// <summary>
-        /// 
+        /// SetCellContents for string
         /// </summary>
-        /// <param name="name"></param>
-        /// <param name="text"></param>
-        /// <returns></returns>
+        /// <param name="name">cell name</param>
+        /// <param name="text">cell string contents</param>
+        /// <returns>set of dependent cells</returns>
         protected override ISet<string> SetCellContents(string name, string text)
         {
             changed = true;
@@ -214,11 +252,25 @@ namespace SS
 
             //Empties Dependies so they can be recalculated
             map.ReplaceDependees(name, new HashSet<string>());
+            //checks for update in formula value with new variable added
+            foreach (string s in GetCellsToRecalculate(name))
+            {
+                Cell outCell;
+                if (cells.TryGetValue(s, out outCell))
+                {
+                    outCell.EvaluateFormula(t => (double)cells[t].value);
+                }
+            }
 
             //returns any dependents of this cell using provided method
             return new HashSet<string>(GetCellsToRecalculate(name));
         }
-
+        /// <summary>
+        /// Sets content of cell for double content based cells
+        /// </summary>
+        /// <param name="name">cell name</param>
+        /// <param name="number">content double</param>
+        /// <returns>set of dependents</returns>
         protected override ISet<string> SetCellContents(string name, double number)
         {
             changed = true;
@@ -233,9 +285,30 @@ namespace SS
             }
             else
                 throw new InvalidNameException();
+            /*
+            foreach (string s in GetCellsToRecalculate(name))
+            {
+                Cell outCell;
+                if (cells.TryGetValue(s, out outCell))
+                {
+                    outCell.contents
+                    outCell.value = 
+                    outCell.EvaluateFormula(LookUp);
+                }
+            }
+            */
 
+            foreach (string s in GetCellsToRecalculate(name))
+            {
+                Cell outCell;
+                if (cells.TryGetValue(s, out outCell))
+                {
+                    outCell.EvaluateFormula(t => (double)cells[t].value);
+                }
+            }
 
             //same functionality as other SetCellConetnts
+            //getdependentcells
             return new HashSet<string>(GetCellsToRecalculate(name));
         }
 
@@ -248,7 +321,7 @@ namespace SS
         {
             //null checks.
             if (name == null)
-                throw new ArgumentNullException(); //
+                throw new ArgumentNullException(); 
             if (!IsValidName(name))
             {
                 throw new InvalidNameException();
@@ -258,10 +331,15 @@ namespace SS
             return map.GetDependees(name);
         }
 
+        /// <summary>
+        /// Saves the current spreadsheet to an xml
+        /// </summary>
+        /// <param name="dest"></param>
         public override void Save(TextWriter dest)
         {
             try
             {
+                
                 XmlWriterSettings set = new XmlWriterSettings();
                 set.Indent = true;
                 XmlWriter writer = XmlWriter.Create(dest, set);
@@ -344,8 +422,11 @@ namespace SS
             double contentDouble; //used to store out double
             string formulaS;
 
-            if (content.Equals(""))
+            if (content == "")
+            {
+                cells.Remove(name);
                 return new HashSet<string>(GetCellsToRecalculate(name));
+            }
             else if (double.TryParse(content, out contentDouble))
                 return SetCellContents(name, contentDouble);
             else if (content.Substring(0, 1) == "=")
@@ -367,6 +448,8 @@ namespace SS
             public Object contents { get; set; }
             public Object value { get; set; }
 
+            public bool FormulaError { get; set; }
+
             public Cell(string contents)
             {
                 this.contents = contents;
@@ -384,6 +467,26 @@ namespace SS
                 this.contents = contents;
                 value = contents;
             }
+            
+            public void EvaluateFormula(Lookup lookup)
+            {
+                if (!(contents is Formula))
+                {
+                    return;
+                }
+                
+                try
+                {
+                    Formula form = (Formula)contents;
+                    value = form.Evaluate(lookup);
+                }catch
+                {
+                    value = new FormulaError();
+                }
+                 
+
+            }
+            
         }
     }
 }
