@@ -92,10 +92,14 @@ namespace SS
         /// <returns></returns>
         public override object GetCellContents(string name)
         {
+
+            //small fix returning cell contents instead of cell name
             if (name == null)
                 throw new InvalidNameException();
-            if (IsValidName(name) && cells.ContainsKey(name))
+            if (IsValidName(name))
             {
+                if(!cells.ContainsKey(name))
+                    return "";
                 return cells[name].contents;
             }
             else
@@ -130,34 +134,33 @@ namespace SS
             //valid naming checks/null checks
             if (name == null)
                 throw new InvalidNameException();
-            if (formula.Equals(null))
-                throw new ArgumentNullException();
             //RegexCheck and then assigns cell
+
+            //IEnumerable<string> oldDependents = map.GetDependents(name);
+            //map.ReplaceDependents(name, new HashSet<string>());
+
+
+
+            //CircularException Check
+            HashSet<string> directDependents = new HashSet<string>(GetCellsToRecalculate(name));
+
+            //update dependents map
+            foreach (string var in formula.GetVariables())
+            {
+                map.AddDependency(name, var);
+            }
+
+            directDependents = new HashSet<string>(GetCellsToRecalculate(name));
+
             if (IsValidName(name))
             {
-                if (cells.ContainsKey(name))
-                    cells[name] = new Cell(formula);
-                else
-                     cells.Add(name, new Cell(formula));
-                
+                cells[name] = new Cell(formula);
             }
             else
                 throw new InvalidNameException();
 
-            //CircularException Check
-            foreach (string var in formula.GetVariables())
-            {
-                map.AddDependency(name, var);
-                //checks each variable for a match with name which results in a Cirucular Dependency
-                if (var == name)
-                    throw new CircularException();
-            }
-
-            HashSet<string> dependents = new HashSet<string>(map.GetDependees(name));
-            dependents.Add(name);
-
             //returns all the cells effected by the change in a Hashset
-            return dependents;
+            return new HashSet<string>(GetCellsToRecalculate(name));
         }
 
         private double LookUp(string name)
@@ -196,8 +199,14 @@ namespace SS
             if (IsValidName(name))
             {
                 if (cells.ContainsKey(name))
+                {
                     cells[name] = new Cell(text);
-                else
+                    if(text == "")
+                    {
+                        cells.Remove(name);
+                    }
+                }
+                else if (text.Length > 0)
                     cells.Add(name, new Cell(text));
             }
             else
@@ -220,19 +229,14 @@ namespace SS
                 throw new ArgumentNullException();
             if (IsValidName(name))
             {
-                if (cells.ContainsKey(name))
-                    cells[name] = new Cell(number);
-                else
-                    cells.Add(name, new Cell(number));
+                cells[name] = new Cell(number);
             }
             else
                 throw new InvalidNameException();
 
-            //same functionality as double SetCellConetnts
-            map.ReplaceDependees(name, new HashSet<String>());
 
             //same functionality as other SetCellConetnts
-            return (ISet<string>)map.GetDependents(name);
+            return new HashSet<string>(GetCellsToRecalculate(name));
         }
 
         /// <summary>
@@ -251,7 +255,7 @@ namespace SS
             }
 
             //returns dependencies attached to name
-            return map.GetDependents(name);
+            return map.GetDependees(name);
         }
 
         public override void Save(TextWriter dest)
