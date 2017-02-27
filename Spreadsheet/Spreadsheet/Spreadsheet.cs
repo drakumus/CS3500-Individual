@@ -79,24 +79,20 @@ namespace SS
             {
                 while (reader.Read())
                 {
-                    if (reader.IsStartElement())
+                //case to set up regex
+                    if(reader.Name == "IsValid")
                     {
-                        //case to set up regex
-                        if(reader.Name == "IsValid")
+                        try
                         {
-                            try
-                            {
-                                newIsValid = new Regex(reader["IsValid"]);
-                            }
-                            catch
-                            {
-                                throw new SpreadsheetReadException("Error in Regex");
-                            }
+                            newIsValid = new Regex(reader["IsValid"]);
                         }
-                    } else if (reader.Name == "cell")
+                        catch
+                        {
+                            throw new SpreadsheetReadException("Error in Regex");
+                        }
+                    }
+                    else if (reader.Name == "cell")
                     {
-                        //adds cells
-                        int numOccurances = 0;
                         List<string> temp = new List<string>();
 
                         //duplicates check
@@ -107,10 +103,17 @@ namespace SS
                             temp.Add(s);
                         }
 
+                        //adds cells
                         junk.Add(reader["name"]);
                         SetContentsOfCell(reader["name"], reader["contents"]);
 
-                    }
+                    }/*
+                    else if(reader.Name != )
+                    {
+                        IXmlLineInfo xmlInfo = (IXmlLineInfo)reader;
+                        if (xmlInfo.LineNumber != 0)
+                            throw new SpreadsheetReadException("Error in XML formatting");
+                    }*/
                 }
             }
         }

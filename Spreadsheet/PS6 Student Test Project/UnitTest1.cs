@@ -94,10 +94,41 @@ namespace PS6_Student_Test_Project
             s.Save(write);
         }
 
+        [TestMethod]
         public void ConstructorTest1()
         {
-            AbstractSpreadsheet s = new Spreadsheet();
+            
+            StreamReader reader = new StreamReader("test.xml");
+            AbstractSpreadsheet s = new Spreadsheet(reader, new Regex(".*"));
+            StreamWriter writer = new StreamWriter("ConstructorTest.xml");
+            s.Save(writer);
+
         }
+        [TestMethod]
+        public void ChangedTest1()
+        {
+            AbstractSpreadsheet s = new Spreadsheet();
+            Assert.AreEqual(false, s.Changed);
+        }
+        [TestMethod]
+        public void ChangedTest2()
+        {
+            AbstractSpreadsheet s = new Spreadsheet();
+            s.SetContentsOfCell("A1", "Dead");
+            Assert.AreEqual(true, s.Changed);
+        }
+        
+        [TestMethod]
+        public void ConstructorTest2()
+        {
+
+            StreamReader reader = new StreamReader("test.xml");
+            AbstractSpreadsheet s = new Spreadsheet(reader, new Regex(".*"));
+            StreamWriter writer = new StreamWriter("ConstructorTest.xml");
+            s.Save(writer);
+
+        }
+        
         /// <summary>
         /// OLD TEST CASES
         /// used to make sure implementations of ContentsOfCell works as intended.
