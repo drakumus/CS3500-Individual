@@ -75,39 +75,67 @@ namespace SS
         {
             XmlReader reader = XmlReader.Create(source);
             List<string> junk = new List<string>();
+            List<string> validNames = new List<string>() { "", "xml" };
+            bool first = true;
+
+            string name = reader.Name;
+
             using (reader)
             {
                 while (reader.Read())
                 {
-                //case to set up regex
-                    if(reader.Name == "IsValid")
+
+
+                    //case to set up regex
+                    if (reader.Name == "spreadsheet" && first)
                     {
+                        string regex = reader.GetAttribute("IsValid");
+                        if (isValid == null)
+                            throw new SpreadsheetReadException("Missing Regex");
+
                         try
                         {
-                            newIsValid = new Regex(reader["IsValid"]);
+                            this.isValid = new Regex(regex);
                         }
                         catch
                         {
                             throw new SpreadsheetReadException("Error in Regex");
                         }
+                        first = false;
                     }
+                    
                     else if (reader.Name == "cell")
                     {
                         List<string> temp = new List<string>();
 
+                        string cellName = reader.GetAttribute("name");
+                        string cellContents = reader.GetAttribute("contents");
+
                         //duplicates check
-                        foreach (string s in junk)
-                        {
-                            if (temp.Contains(s))
-                                throw new SpreadsheetReadException("duplicate read occured");
-                            temp.Add(s);
-                        }
-
+                        if(cellName == null || cellContents == null)
+                            throw new SpreadsheetReadException("Invalid Cell");
+                        if (cells.ContainsKey(cellName.ToUpper()))
+                            throw new SpreadsheetReadException("Duplicate Cell");
+                        if (!isValid.IsMatch(cellName))
+                            throw new SpreadsheetReadException("Cell Name does not match regex");
+                        if (!newIsValid.IsMatch(cellName))
+                            throw new SpreadsheetVersionException("Cell Name does not match new regex");
                         //adds cells
-                        junk.Add(reader["name"]);
-                        SetContentsOfCell(reader["name"], reader["contents"]);
-
-                    }/*
+                        try
+                        {
+                            SetContentsOfCell(reader["name"], reader["contents"]);
+                        }
+                        catch
+                        {
+                            throw new SpreadsheetVersionException("");
+                        }
+                    }
+                    else if (reader.Name != "xml" && reader.Name != "" && reader.Name != "spreadsheet")
+                    {
+                        throw new SpreadsheetReadException("Invalid Name");
+                    }
+                    
+                    /*
                     else if(reader.Name != )
                     {
                         IXmlLineInfo xmlInfo = (IXmlLineInfo)reader;
@@ -116,6 +144,7 @@ namespace SS
                     }*/
                 }
             }
+            this.isValid = newIsValid;
         }
         
         /// <summary>
@@ -123,9 +152,10 @@ namespace SS
         /// </summary>
         /// <param name="name">Cell Name</param>
         /// <returns></returns>
-        private bool IsValidName(string name)
+        private bool IsValidName(ref string name)
         {
             //if (Regex.IsMatch(name, @"^[a-zA-Z_](?: [a-zA-Z_]|\d)*$", RegexOptions.Singleline) && name != null)
+            name.ToUpper();
             return Regex.IsMatch(name, @"^[a-zA-Z_](?: [a-zA-Z_]|\d)*$", RegexOptions.Singleline) && isValid.IsMatch(name);
         }
 
@@ -143,10 +173,14 @@ namespace SS
             if (name == null)
                 throw new InvalidNameException();
             //case for setting cell contents of a cell not yet assigned
-            if (IsValidName(name))
+            if (IsValidName(ref name))
             {
-                if(!cells.ContainsKey(name))
+                if (!cells.ContainsKey(name) && cells.ContainsKey(name.ToUpper()) && cells.ContainsKey(name.ToLower()))
                     return "";
+                //else if (cells.ContainsKey(name.ToLower()))
+                //   return cells[name.ToUpper()].contents;
+                else if (cells.ContainsKey(name.ToUpper()))
+                    return cells[name.ToUpper()].contents;
                 return cells[name].contents;
             }
             else
@@ -201,7 +235,7 @@ namespace SS
             directDependents = new HashSet<string>(GetCellsToRecalculate(name));
 
             //adds cell to cells
-            if (IsValidName(name))
+            if (IsValidName(ref name))
             {
                 cells[name] = new Cell(formula);
 
@@ -237,7 +271,7 @@ namespace SS
                 throw new InvalidNameException();
             if (text == null)
                 throw new ArgumentNullException();
-            if (IsValidName(name))
+            if (IsValidName(ref name))
             {
                 if (cells.ContainsKey(name))
                 {
@@ -282,7 +316,7 @@ namespace SS
                 throw new InvalidNameException();
             if (number == null)
                 throw new ArgumentNullException();
-            if (IsValidName(name))
+            if (IsValidName(ref name))
             {
                 cells[name] = new Cell(number);
             }
@@ -325,7 +359,7 @@ namespace SS
             //null checks.
             if (name == null)
                 throw new ArgumentNullException(); 
-            if (!IsValidName(name))
+            if (!IsValidName(ref name))
             {
                 throw new InvalidNameException();
             }
@@ -402,14 +436,23 @@ namespace SS
         {
             if (name == null)
                 throw new InvalidNameException();
-            if (IsValidName(name) && cells.ContainsKey(name))
+            if (IsValidName(ref name))
             {
-                return cells[name].value;
+                if (cells.ContainsKey(name))
+                {
+                    return cells[name].value;
+                }
+                else if (!cells.ContainsKey(name))
+                {
+                    if (cells.ContainsKey(name.ToUpper()))
+                        return cells[name.ToUpper()].value;
+                    //else if (cells.ContainsKey(name.ToLower()))
+                    //    return cells[name.ToLower()].value;
+                    return "";
+                }
             }
-            else
-            {
-                throw new InvalidNameException();
-            }
+            throw new InvalidNameException();
+           
         }
 
         public override ISet<string> SetContentsOfCell(string name, string content)
@@ -431,16 +474,17 @@ namespace SS
                 return new HashSet<string>(GetCellsToRecalculate(name));
             }
             else if (double.TryParse(content, out contentDouble))
-                return SetCellContents(name, contentDouble);
+                return SetCellContents(name.ToUpper(), contentDouble);
             else if (content.Substring(0, 1) == "=")
             {
-                formulaS = content.Substring(1, content.Length - 1);
-                Formula tempForm = new Formula(formulaS, s => s.ToUpper(), s => IsValidName(s));
+                formulaS = content.Substring(1, content.Length - 1).ToUpper();
+                Formula tempForm = new Formula(formulaS, s => s.ToUpper(), s => IsValidName(ref s));
 
-                return SetCellContents(name, new Formula(formulaS));
+                return SetCellContents(name.ToUpper(), new Formula(formulaS));
             }    
             else
-                return SetCellContents(name, content);
+                return SetCellContents(name.ToUpper(), content);
+
         }
 
         /// <summary>
