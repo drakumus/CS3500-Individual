@@ -138,7 +138,7 @@ namespace Formulas
         /// delegate takes a variable name as a parameter and returns its value (if it has one) or throws
         /// an UndefinedVariableException (otherwise).  Uses the standard precedence rules when doing the evaluation.
         /// 
-        /// If no undefined variables or divisions by zero are encountered when evaluating 
+        /// If no undefined variables or divisions by zero are encountered when evaluating  
         /// this Formula, its value is returned.  Otherwise, throws a FormulaEvaluationException  
         /// with an explanatory Message.
         /// </summary>
