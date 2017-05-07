@@ -11,7 +11,7 @@ namespace Formulas
     /// rules.  Provides a means to evaluate Formulas.  Formulas can be composed of
     /// non-negative floating-point numbers, variables, left and right parentheses, and
     /// the four binary operator symbols +, -, *, and /.  (The unary operators + and -
-    /// are not allowed.)
+    /// are not allowed.) 
     /// </summary>
     public class Formula
     {
