@@ -12,7 +12,7 @@ namespace FormulaTestCases
     /// own (which we strongly recommend).  To run them, pull down the Test menu and do
     /// Run > All Tests.
     /// </summary>
-    [TestClass]
+    [TestClass] 
     public class UnitTests
     {
         /// <summary>
