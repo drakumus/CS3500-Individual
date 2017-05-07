@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace SS
 {
-    public class Spreadsheet : AbstractSpreadsheet
+    public class Spreadsheet : AbstractSpreadsheet 
     {
 
         //dictionary for all cells
