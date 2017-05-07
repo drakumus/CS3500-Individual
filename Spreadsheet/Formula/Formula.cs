@@ -12,7 +12,7 @@ namespace Formulas
     /// non-negative floating-point numbers, variables, left and right parentheses, and
     /// the four binary operator symbols +, -, *, and /.  (The unary operators + and -
     /// are not allowed.)
-    /// </summary>
+    /// </summary> 
     public struct Formula
     {
 
