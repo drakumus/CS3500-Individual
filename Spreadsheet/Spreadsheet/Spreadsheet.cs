@@ -25,7 +25,7 @@ namespace SS
 
         private Regex isValid;
         /// <summary>
-        /// Protected variable to demonstrate a change in spreadsheet.
+        /// Protected variable to demonstrate a change in spreadsheet. 
         /// </summary>
         public override bool Changed
         {
